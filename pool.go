@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	minBitSize = 6 // 2**6=64 is a CPU cache line size
+	minBitSize = 6
 	steps      = 20
 
 	minSize = 1 << minBitSize
@@ -17,11 +17,6 @@ const (
 	maxPercentile           = 0.95
 )
 
-// Pool represents byte buffer pool.
-//
-// Distinct pools may be used for distinct types of byte buffers.
-// Properly determined byte buffer types with their own pools may help reducing
-// memory waste.
 type Pool struct {
 	calls       [steps]uint64
 	calibrating uint64
@@ -34,17 +29,8 @@ type Pool struct {
 
 var defaultPool Pool
 
-// Get returns an empty byte buffer from the pool.
-//
-// Got byte buffer may be returned to the pool via Put call.
-// This reduces the number of memory allocations required for byte buffer
-// management.
 func Get() *ByteBuffer { return defaultPool.Get() }
 
-// Get returns new byte buffer with zero length.
-//
-// The byte buffer may be returned to the pool via Put after the use
-// in order to minimize GC overhead.
 func (p *Pool) Get() *ByteBuffer {
 	v := p.pool.Get()
 	if v != nil {
@@ -55,15 +41,10 @@ func (p *Pool) Get() *ByteBuffer {
 	}
 }
 
-// Put returns byte buffer to the pool.
-//
-// ByteBuffer.B mustn't be touched after returning it to the pool.
-// Otherwise data races will occur.
-func Put(b *ByteBuffer) { defaultPool.Put(b) }
+func Put(b *ByteBuffer) {
+	defaultPool.Put(b)
+}
 
-// Put releases byte buffer obtained via Get to the pool.
-//
-// The buffer mustn't be accessed after returning to the pool.
 func (p *Pool) Put(b *ByteBuffer) {
 	idx := index(len(b.B))
 
