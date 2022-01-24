@@ -33,6 +33,10 @@ func (b *Buffer) Grow(n, preallocate int) {
 		return
 	}
 
+	if preallocate < 0 {
+		preallocate = 0
+	}
+
 	new := make([]byte, s, (s + preallocate))
 
 	for i := 0; i < l; i++ {
