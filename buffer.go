@@ -12,6 +12,10 @@ type (
 	}
 )
 
+const (
+	preallocate int = 16
+)
+
 func (b *Buffer) Length() (length int) {
 	length = len(b.bytes)
 	return
@@ -22,28 +26,41 @@ func (b *Buffer) Capacity() (capacity int) {
 	return
 }
 
-func (b *Buffer) Grow(n, preallocate int) {
+func (b *Buffer) Preallocate(n int) {
+	l := len(b.bytes)
+	c := cap(b.bytes)
+
+	temp := make([]byte, l, (c + n))
+	copy(temp, b.bytes)
+
+	b.bytes = temp
+}
+
+func (b *Buffer) Grow(n int) {
 	l := len(b.bytes)
 	c := cap(b.bytes)
 
 	s := l + n
 
-	if (c-l) > n && preallocate < 1 {
+	if (c - l) > n {
 		b.bytes = b.bytes[:s]
 		return
 	}
 
-	if preallocate < 0 {
-		preallocate = 0
-	}
+	temp := make([]byte, s, (s + preallocate))
+	copy(temp, b.bytes)
 
-	new := make([]byte, s, (s + preallocate))
+	b.bytes = temp
+}
 
-	for i := 0; i < l; i++ {
-		new[i] = b.bytes[i]
-	}
+func (b *Buffer) PreallocateAndGrow(n, grow int) {
+	l := len(b.bytes)
+	c := cap(b.bytes)
 
-	b.bytes = new
+	temp := make([]byte, (l + grow), (c + n + grow))
+	copy(temp, b.bytes)
+
+	b.bytes = temp
 }
 
 func (b *Buffer) Reset() {
@@ -61,11 +78,15 @@ func (b *Buffer) Bytes() (target []byte) {
 }
 
 func (b *Buffer) String() (target string) {
-	target = conversion.BytesToString(b.bytes)
+	target = conversion.BytesToStringNoCopy(b.bytes)
 	return
 }
 
-func (b *Buffer) Copy() (target []byte) {
+func (b *Buffer) CopyBytes() (target []byte) {
+	l := len(b.bytes)
+	c := cap(b.bytes)
+
+	target = make([]byte, l, c)
 	copy(target, b.bytes)
 	return
 }
@@ -103,7 +124,7 @@ func (b *Buffer) WriteRune(source rune) (n int, err error) {
 
 	l := len(b.bytes)
 
-	b.Grow(utf8.UTFMax, 0)
+	b.Grow(utf8.UTFMax)
 
 	n = utf8.EncodeRune(b.bytes[l:], source)
 	return
@@ -115,6 +136,12 @@ func (b *Buffer) WriteString(source string) (n int, err error) {
 	return
 }
 
-func (b *Buffer) Read() {
+func (b *Buffer) Read(target []byte) (n int, err error) {
+	n = copy(target, b.bytes)
+	return
+}
 
+func (b *Buffer) ReadString(target string) (n int, err error) {
+	n = copy(conversion.StringToBytesNoCopy(target), b.bytes)
+	return
 }
