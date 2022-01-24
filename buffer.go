@@ -1,6 +1,8 @@
 package bytebufferpool
 
 import (
+	"errors"
+	"io"
 	"unicode/utf8"
 
 	"github.com/go-asphyxia/conversion"
@@ -136,6 +138,24 @@ func (b *Buffer) WriteString(source string) (n int, err error) {
 	return
 }
 
+func (b *Buffer) ReadFrom(source io.Reader) (n int64, err error) {
+	eof := false
+	read := 0
+
+	for !eof {
+		read, err = source.Read(b.bytes[:read])
+		eof = errors.Is(err, io.EOF)
+		if err != nil && !eof {
+			return
+		}
+
+		n += int64(read)
+		b.Grow(read * 2)
+	}
+
+	return
+}
+
 func (b *Buffer) Read(target []byte) (n int, err error) {
 	n = copy(target, b.bytes)
 	return
@@ -143,5 +163,11 @@ func (b *Buffer) Read(target []byte) (n int, err error) {
 
 func (b *Buffer) ReadString(target string) (n int, err error) {
 	n = copy(conversion.StringToBytesNoCopy(target), b.bytes)
+	return
+}
+
+func (b *Buffer) WriteTo(target io.Writer) (n int64, err error) {
+	wrote, err := target.Write(b.bytes)
+	n = int64(wrote)
 	return
 }
