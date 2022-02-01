@@ -1,132 +1,161 @@
 package bytebufferpool
 
-// import (
-// 	"sort"
-// 	"sync"
-// 	"sync/atomic"
-// )
+import (
+	"sort"
+	"sync"
+	"sync/atomic"
+)
 
-// const (
-// 	minBitSize = 6
-// 	steps      = 20
+type (
+	Pool struct {
+		calls       [steps]uint64
+		calibrating uint64
 
-// 	minSize = 1 << minBitSize
-// 	maxSize = 1 << (minBitSize + steps - 1)
+		defaultSize uint64
+		maxSize     uint64
 
-// 	calibrateCallsThreshold = 42000
-// 	maxPercentile           = 0.95
-// )
+		pool *sync.Pool
+	}
 
-// type Pool struct {
-// 	calls       [steps]uint64
-// 	calibrating uint64
+	callSize struct {
+		calls uint64
+		size  uint64
+	}
 
-// 	defaultSize uint64
-// 	maxSize     uint64
+	callSizes []callSize
+)
 
-// 	pool sync.Pool
-// }
+const (
+	minBitSize = 6
+	steps      = 20
 
-// var defaultPool Pool
+	minSize = 1 << minBitSize
+	maxSize = 1 << (minBitSize + steps - 1)
 
-// func Get() *ByteBuffer { return defaultPool.Get() }
+	calibrateCallsThreshold = 42000
+	maxPercentile           = 0.95
+)
 
-// func (p *Pool) Get() *ByteBuffer {
-// 	v := p.pool.Get()
-// 	if v != nil {
-// 		return v.(*ByteBuffer)
-// 	}
-// 	return &ByteBuffer{
-// 		B: make([]byte, 0, atomic.LoadUint64(&p.defaultSize)),
-// 	}
-// }
+var (
+	defaultPool = Pool{
+		pool: new(sync.Pool),
+	}
+)
 
-// func Put(b *ByteBuffer) {
-// 	defaultPool.Put(b)
-// }
+func Get() (b *Buffer) {
+	b = defaultPool.Get()
+	return
+}
 
-// func (p *Pool) Put(b *ByteBuffer) {
-// 	idx := index(len(b.B))
+func (p *Pool) Get() (b *Buffer) {
+	o := p.pool.Get()
 
-// 	if atomic.AddUint64(&p.calls[idx], 1) > calibrateCallsThreshold {
-// 		p.calibrate()
-// 	}
+	if o != nil {
+		b = o.(*Buffer)
+		return
+	}
 
-// 	maxSize := int(atomic.LoadUint64(&p.maxSize))
-// 	if maxSize == 0 || cap(b.B) <= maxSize {
-// 		b.Reset()
-// 		p.pool.Put(b)
-// 	}
-// }
+	b = &Buffer{
+		bytes: make([]byte, 0, atomic.LoadUint64(&p.defaultSize)),
+	}
 
-// func (p *Pool) calibrate() {
-// 	if !atomic.CompareAndSwapUint64(&p.calibrating, 0, 1) {
-// 		return
-// 	}
+	return
+}
 
-// 	a := make(callSizes, 0, steps)
-// 	var callsSum uint64
-// 	for i := uint64(0); i < steps; i++ {
-// 		calls := atomic.SwapUint64(&p.calls[i], 0)
-// 		callsSum += calls
-// 		a = append(a, callSize{
-// 			calls: calls,
-// 			size:  minSize << i,
-// 		})
-// 	}
-// 	sort.Sort(a)
+func Put(b *Buffer) {
+	defaultPool.Put(b)
+}
 
-// 	defaultSize := a[0].size
-// 	maxSize := defaultSize
+func (p *Pool) Put(b *Buffer) {
+	l := len(b.bytes)
+	i := index(l)
 
-// 	maxSum := uint64(float64(callsSum) * maxPercentile)
-// 	callsSum = 0
-// 	for i := 0; i < steps; i++ {
-// 		if callsSum > maxSum {
-// 			break
-// 		}
-// 		callsSum += a[i].calls
-// 		size := a[i].size
-// 		if size > maxSize {
-// 			maxSize = size
-// 		}
-// 	}
+	if atomic.AddUint64(&p.calls[i], 1) > calibrateCallsThreshold {
+		p.calibrate()
+	}
 
-// 	atomic.StoreUint64(&p.defaultSize, defaultSize)
-// 	atomic.StoreUint64(&p.maxSize, maxSize)
+	maxSize := int(atomic.LoadUint64(&p.maxSize))
 
-// 	atomic.StoreUint64(&p.calibrating, 0)
-// }
+	if maxSize == 0 || cap(b.bytes) <= maxSize {
+		b.Reset()
+		p.pool.Put(b)
+	}
+}
 
-// type callSize struct {
-// 	calls uint64
-// 	size  uint64
-// }
+func (p *Pool) calibrate() {
+	if !atomic.CompareAndSwapUint64(&p.calibrating, 0, 1) {
+		return
+	}
 
-// type callSizes []callSize
+	sizes := make(callSizes, 0, steps)
+	sum := uint64(0)
 
-// func (ci callSizes) Len() int {
-// 	return len(ci)
-// }
+	for i := range p.calls {
+		calls := atomic.SwapUint64(&p.calls[i], 0)
+		sum += calls
 
-// func (ci callSizes) Less(i, j int) bool {
-// 	return ci[i].calls > ci[j].calls
-// }
+		sizes = append(sizes, callSize{
+			calls: calls,
+			size:  minSize << i,
+		})
+	}
 
-// func (ci callSizes) Swap(i, j int) {
-// 	ci[i], ci[j] = ci[j], ci[i]
-// }
+	sort.Sort(sizes)
 
-// func index(n int) int {
-// 	n--
-// 	n >>= minBitSize
-// 	idx := 0
-// 	for n > 0 {
-// 		n >>= 1
-// 		idx++
-// 	}
-// 	if idx >= steps {
-// 		idx = steps - 1
-// 	}
-// 	return idx
-// }
+	l := len(sizes)
+
+	defaultSize := sizes[0].size
+	maxSize := defaultSize
+
+	maxSum := uint64(float64(sum) * maxPercentile)
+
+	sum = 0
+
+	for i := 0; i < l; i++ {
+		if sum > maxSum {
+			break
+		}
+
+		sum += sizes[i].calls
+		size := sizes[i].size
+
+		if size > maxSize {
+			maxSize = size
+		}
+	}
+
+	atomic.StoreUint64(&p.defaultSize, defaultSize)
+	atomic.StoreUint64(&p.maxSize, maxSize)
+
+	atomic.StoreUint64(&p.calibrating, 0)
+}
+
+func (ci callSizes) Len() (l int) {
+	l = len(ci)
+	return
+}
+
+func (ci callSizes) Less(i, j int) (less bool) {
+	less = ci[i].calls > ci[j].calls
+	return
+}
+
+func (ci callSizes) Swap(i, j int) {
+	ci[i], ci[j] = ci[j], ci[i]
+}
+
+func index(n int) (index int) {
+	n--
+	n >>= minBitSize
+
+	for n > 0 {
+		n >>= 1
+		index++
+	}
+
+	if index >= steps {
+		index = steps - 1
+	}
+
+	return
+}
