@@ -44,7 +44,7 @@ func (b *Buffer) Grow(n int) {
 
 	s := l + n
 
-	if (c - l) > n {
+	if s <= c {
 		b.bytes = b.bytes[:s]
 		return
 	}
@@ -129,6 +129,8 @@ func (b *Buffer) WriteRune(source rune) (n int, err error) {
 	b.Grow(utf8.UTFMax)
 
 	n = utf8.EncodeRune(b.bytes[l:], source)
+
+	b.bytes = b.bytes[:l+n]
 	return
 }
 
