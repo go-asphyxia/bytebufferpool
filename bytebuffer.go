@@ -9,7 +9,8 @@ import (
 
 type (
 	B struct {
-		bytes []byte
+		bytes  []byte
+		offset int
 	}
 )
 
@@ -145,7 +146,20 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 }
 
 func (b *B) Read(target []byte) (n int, err error) {
-	n = copy(target, b.bytes)
+	n = copy(target, b.bytes[b.offset:])
+	b.offset += n
+	return
+}
+
+func (b *B) ReadByte() (target byte, err error) {
+	target = b.bytes[b.offset]
+	b.offset++
+	return
+}
+
+func (b *B) ReadRune() (target rune, size int, err error) {
+	target, size = utf8.DecodeRune(b.bytes[b.offset:])
+	b.offset += size
 	return
 }
 
