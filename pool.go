@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	Pool struct {
+	P struct {
 		calls       [steps]uint64
 		calibrating uint64
 
@@ -37,36 +37,42 @@ const (
 )
 
 var (
-	defaultPool = Pool{
-		pool: new(sync.Pool),
-	}
+	defaultPool = Pool()
 )
 
-func Get() (b *Buffer) {
+func Pool() (p *P) {
+	p = &P{
+		pool: new(sync.Pool),
+	}
+
+	return
+}
+
+func Get() (b *B) {
 	b = defaultPool.Get()
 	return
 }
 
-func (p *Pool) Get() (b *Buffer) {
+func (p *P) Get() (b *B) {
 	o := p.pool.Get()
 
 	if o != nil {
-		b = o.(*Buffer)
+		b = o.(*B)
 		return
 	}
 
-	b = &Buffer{
+	b = &B{
 		bytes: make([]byte, 0, atomic.LoadUint64(&p.defaultSize)),
 	}
 
 	return
 }
 
-func Put(b *Buffer) {
+func Put(b *B) {
 	defaultPool.Put(b)
 }
 
-func (p *Pool) Put(b *Buffer) {
+func (p *P) Put(b *B) {
 	l := len(b.bytes)
 	i := index(l)
 
@@ -82,7 +88,7 @@ func (p *Pool) Put(b *Buffer) {
 	}
 }
 
-func (p *Pool) calibrate() {
+func (p *P) calibrate() {
 	if !atomic.CompareAndSwapUint64(&p.calibrating, 0, 1) {
 		return
 	}

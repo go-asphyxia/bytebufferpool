@@ -8,22 +8,42 @@ import (
 )
 
 type (
-	Buffer struct {
+	B struct {
 		bytes []byte
 	}
 )
 
-func (b *Buffer) Len() (length int) {
-	length = len(b.bytes)
+func Buffer(l, c int) (b *B) {
+	b = &B{
+		bytes: make([]byte, l, c),
+	}
+
 	return
 }
 
-func (b *Buffer) Cap() (capacity int) {
-	capacity = cap(b.bytes)
+func (b *B) Copy() (target *B) {
+	l := len(b.bytes)
+	c := cap(b.bytes)
+
+	target = &B{
+		bytes: make([]byte, l, c),
+	}
+
+	copy(target.bytes, b.bytes)
 	return
 }
 
-func (b *Buffer) Grow(n, preallocate int) {
+func (b *B) Len() (l int) {
+	l = len(b.bytes)
+	return
+}
+
+func (b *B) Cap() (c int) {
+	c = cap(b.bytes)
+	return
+}
+
+func (b *B) Grow(n, preallocate int) {
 	l := len(b.bytes)
 	c := cap(b.bytes)
 
@@ -40,26 +60,26 @@ func (b *Buffer) Grow(n, preallocate int) {
 	b.bytes = temp
 }
 
-func (b *Buffer) Reset() {
+func (b *B) Reset() {
 	b.bytes = b.bytes[:0]
 }
 
-func (b *Buffer) Close() (err error) {
+func (b *B) Close() (err error) {
 	b.bytes = nil
 	return
 }
 
-func (b *Buffer) Bytes() (target []byte) {
+func (b *B) Bytes() (target []byte) {
 	target = b.bytes
 	return
 }
 
-func (b *Buffer) String() (target string) {
+func (b *B) String() (target string) {
 	target = conversion.BytesToStringNoCopy(b.bytes)
 	return
 }
 
-func (b *Buffer) CopyBytes() (target []byte) {
+func (b *B) CopyBytes() (target []byte) {
 	l := len(b.bytes)
 	c := cap(b.bytes)
 
@@ -68,31 +88,31 @@ func (b *Buffer) CopyBytes() (target []byte) {
 	return
 }
 
-func (b *Buffer) CopyString() (target string) {
+func (b *B) CopyString() (target string) {
 	target = string(b.bytes)
 	return
 }
 
-func (b *Buffer) Set(source []byte) {
+func (b *B) Set(source []byte) {
 	b.bytes = append(b.bytes[:0], source...)
 }
 
-func (b *Buffer) SetString(source string) {
+func (b *B) SetString(source string) {
 	b.bytes = append(b.bytes[:0], source...)
 }
 
-func (b *Buffer) Write(source []byte) (n int, err error) {
+func (b *B) Write(source []byte) (n int, err error) {
 	b.bytes = append(b.bytes, source...)
 	n = len(source)
 	return
 }
 
-func (b *Buffer) WriteByte(source byte) (err error) {
+func (b *B) WriteByte(source byte) (err error) {
 	b.bytes = append(b.bytes, source)
 	return
 }
 
-func (b *Buffer) WriteRune(source rune) (n int, err error) {
+func (b *B) WriteRune(source rune) (n int, err error) {
 	l := len(b.bytes)
 	c := cap(b.bytes)
 
@@ -114,27 +134,27 @@ func (b *Buffer) WriteRune(source rune) (n int, err error) {
 	return
 }
 
-func (b *Buffer) WriteString(source string) (n int, err error) {
+func (b *B) WriteString(source string) (n int, err error) {
 	b.bytes = append(b.bytes, source...)
 	n = len(source)
 	return
 }
 
-func (b *Buffer) ReadFrom(source io.Reader) (n int64, err error) {
+func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 	return
 }
 
-func (b *Buffer) Read(target []byte) (n int, err error) {
+func (b *B) Read(target []byte) (n int, err error) {
 	n = copy(target, b.bytes)
 	return
 }
 
-func (b *Buffer) ReadString(target string) (n int, err error) {
+func (b *B) ReadString(target string) (n int, err error) {
 	n = copy(conversion.StringToBytesNoCopy(target), b.bytes)
 	return
 }
 
-func (b *Buffer) WriteTo(target io.Writer) (n int64, err error) {
+func (b *B) WriteTo(target io.Writer) (n int64, err error) {
 	wrote, err := target.Write(b.bytes)
 	n = int64(wrote)
 	return
