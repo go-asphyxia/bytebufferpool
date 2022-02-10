@@ -23,38 +23,18 @@ func (b *Buffer) Cap() (capacity int) {
 	return
 }
 
-func (b *Buffer) Preallocate(n int) {
-	l := len(b.bytes)
-	c := cap(b.bytes)
-
-	temp := make([]byte, l, (c + n))
-	copy(temp, b.bytes)
-
-	b.bytes = temp
-}
-
-func (b *Buffer) Grow(n int) {
+func (b *Buffer) Grow(n, preallocate int) {
 	l := len(b.bytes)
 	c := cap(b.bytes)
 
 	s := l + n
 
-	if s <= c {
+	if s <= c && preallocate <= 0 {
 		b.bytes = b.bytes[:s]
 		return
 	}
 
-	temp := make([]byte, s, s)
-	copy(temp, b.bytes)
-
-	b.bytes = temp
-}
-
-func (b *Buffer) PreallocateAndGrow(n, grow int) {
-	l := len(b.bytes)
-	c := cap(b.bytes)
-
-	temp := make([]byte, (l + grow), (c + n + grow))
+	temp := make([]byte, s, (s + preallocate))
 	copy(temp, b.bytes)
 
 	b.bytes = temp
