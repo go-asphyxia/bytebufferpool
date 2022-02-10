@@ -1,7 +1,6 @@
 package bytebufferpool
 
 import (
-	"errors"
 	"io"
 	"unicode/utf8"
 
@@ -14,16 +13,12 @@ type (
 	}
 )
 
-const (
-	preallocate int = 16
-)
-
-func (b *Buffer) Length() (length int) {
+func (b *Buffer) Len() (length int) {
 	length = len(b.bytes)
 	return
 }
 
-func (b *Buffer) Capacity() (capacity int) {
+func (b *Buffer) Cap() (capacity int) {
 	capacity = cap(b.bytes)
 	return
 }
@@ -49,7 +44,7 @@ func (b *Buffer) Grow(n int) {
 		return
 	}
 
-	temp := make([]byte, s, (s + preallocate))
+	temp := make([]byte, s, s)
 	copy(temp, b.bytes)
 
 	b.bytes = temp
@@ -118,19 +113,24 @@ func (b *Buffer) WriteByte(source byte) (err error) {
 }
 
 func (b *Buffer) WriteRune(source rune) (n int, err error) {
-	if uint32(source) < utf8.RuneSelf {
-		b.WriteByte(byte(source))
-		n = 1
+	l := len(b.bytes)
+	c := cap(b.bytes)
+
+	s := l + utf8.UTFMax
+
+	if s <= c {
+		b.bytes = b.bytes[:s]
+
+		n = utf8.EncodeRune(b.bytes[l:], source)
 		return
 	}
 
-	l := len(b.bytes)
+	temp := make([]byte, s, s)
+	copy(temp, b.bytes)
 
-	b.Grow(utf8.UTFMax)
+	n = utf8.EncodeRune(temp[l:], source)
 
-	n = utf8.EncodeRune(b.bytes[l:], source)
-
-	b.bytes = b.bytes[:l+n]
+	b.bytes = temp
 	return
 }
 
@@ -141,20 +141,6 @@ func (b *Buffer) WriteString(source string) (n int, err error) {
 }
 
 func (b *Buffer) ReadFrom(source io.Reader) (n int64, err error) {
-	eof := false
-	read := 0
-
-	for !eof {
-		read, err = source.Read(b.bytes[:read])
-		eof = errors.Is(err, io.EOF)
-		if err != nil && !eof {
-			return
-		}
-
-		n += int64(read)
-		b.Grow(read * 2)
-	}
-
 	return
 }
 
