@@ -57,6 +57,7 @@ func (b *B) Grow(n, preallocate int) {
 
 func (b *B) Reset() {
 	b.bytes = b.bytes[:0]
+	b.offset = 0
 }
 
 func (b *B) Close() (err error) {
@@ -137,35 +138,57 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 }
 
 func (b *B) Read(target []byte) (n int, err error) {
-	n = copy(target, b.bytes[b.offset:])
-	b.offset += n
-
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
+		return
 	}
 
+	n = copy(target, b.bytes[b.offset:])
+	b.offset += n
 	return
 }
 
 func (b *B) ReadByte() (target byte, err error) {
+	if len(b.bytes) <= b.offset {
+		err = io.EOF
+		return
+	}
+
 	target = b.bytes[b.offset]
 	b.offset++
 	return
 }
 
-func (b *B) ReadRune() (target rune, size int, err error) {
-	target, size = utf8.DecodeRune(b.bytes[b.offset:])
-	b.offset += size
+func (b *B) ReadRune() (target rune, n int, err error) {
+	if len(b.bytes) <= b.offset {
+		err = io.EOF
+		return
+	}
+
+	target, n = utf8.DecodeRune(b.bytes[b.offset:])
+	b.offset += n
 	return
 }
 
 func (b *B) ReadString(target string) (n int, err error) {
-	n = copy(conversion.StringToBytesNoCopy(target), b.bytes)
+	if len(b.bytes) <= b.offset {
+		err = io.EOF
+		return
+	}
+
+	n = copy(conversion.StringToBytesNoCopy(target), b.bytes[b.offset:])
+	b.offset += n
 	return
 }
 
 func (b *B) WriteTo(target io.Writer) (n int64, err error) {
-	wrote, err := target.Write(b.bytes)
+	if len(b.bytes) <= b.offset {
+		err = io.EOF
+		return
+	}
+
+	wrote, err := target.Write(b.bytes[b.offset:])
+	b.offset += wrote
 	n = int64(wrote)
 	return
 }
