@@ -14,20 +14,17 @@ type (
 	}
 )
 
-func Buffer(l, c int) (b *B) {
+func Buffer() (b *B) {
 	b = &B{
-		bytes: make([]byte, l, c),
+		bytes: make([]byte, 0),
 	}
 
 	return
 }
 
 func (b *B) Copy() (target *B) {
-	l := len(b.bytes)
-	c := cap(b.bytes)
-
 	target = &B{
-		bytes: make([]byte, l, c),
+		bytes: make([]byte, len(b.bytes), cap(b.bytes)),
 	}
 
 	copy(target.bytes, b.bytes)
@@ -45,12 +42,9 @@ func (b *B) Cap() (c int) {
 }
 
 func (b *B) Grow(n, preallocate int) {
-	l := len(b.bytes)
-	c := cap(b.bytes)
+	s := len(b.bytes) + n
 
-	s := l + n
-
-	if s <= c && preallocate <= 0 {
+	if s <= cap(b.bytes) && preallocate <= 0 {
 		b.bytes = b.bytes[:s]
 		return
 	}
@@ -81,10 +75,7 @@ func (b *B) String() (target string) {
 }
 
 func (b *B) CopyBytes() (target []byte) {
-	l := len(b.bytes)
-	c := cap(b.bytes)
-
-	target = make([]byte, l, c)
+	target = make([]byte, len(b.bytes), cap(b.bytes))
 	copy(target, b.bytes)
 	return
 }
@@ -115,11 +106,10 @@ func (b *B) WriteByte(source byte) (err error) {
 
 func (b *B) WriteRune(source rune) (n int, err error) {
 	l := len(b.bytes)
-	c := cap(b.bytes)
 
 	s := l + utf8.UTFMax
 
-	if s <= c {
+	if s <= cap(b.bytes) {
 		b.bytes = b.bytes[:s]
 
 		n = utf8.EncodeRune(b.bytes[l:], source)
@@ -142,12 +132,18 @@ func (b *B) WriteString(source string) (n int, err error) {
 }
 
 func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
+
 	return
 }
 
 func (b *B) Read(target []byte) (n int, err error) {
 	n = copy(target, b.bytes[b.offset:])
 	b.offset += n
+
+	if len(b.bytes) <= b.offset {
+		err = io.EOF
+	}
+
 	return
 }
 
