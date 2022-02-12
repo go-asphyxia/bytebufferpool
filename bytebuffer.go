@@ -14,9 +14,9 @@ type (
 	}
 )
 
-func Buffer() (b *B) {
+func Buffer(l, c int) (b *B) {
 	b = &B{
-		bytes: make([]byte, 0),
+		bytes: make([]byte, l, c),
 	}
 
 	return
@@ -41,18 +41,19 @@ func (b *B) Cap() (c int) {
 	return
 }
 
-func (b *B) Grow(n, preallocate int) {
+func (b *B) Grow(n int) {
 	s := len(b.bytes) + n
 
-	if s <= cap(b.bytes) && preallocate <= 0 {
+	if s <= cap(b.bytes) {
 		b.bytes = b.bytes[:s]
 		return
 	}
 
-	temp := make([]byte, s, (s + preallocate))
+	temp := make([]byte, s, s)
 	copy(temp, b.bytes)
 
 	b.bytes = temp
+	return
 }
 
 func (b *B) Reset() {
@@ -133,8 +134,40 @@ func (b *B) WriteString(source string) (n int, err error) {
 }
 
 func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
+	var (
+		l int
+		c int
+		r int
+	)
 
-	return
+f:
+	for {
+		l = len(b.bytes)
+		c = cap(b.bytes)
+
+		if l < c {
+			r, err = source.Read(b.bytes[l:])
+			n += int64(r)
+			if err != nil {
+				return
+			}
+
+			continue f
+		}
+
+		size := c * 2
+
+		temp := make([]byte, size, size)
+		copy(temp, b.bytes)
+
+		r, err = source.Read(temp[l:])
+		n += int64(r)
+		if err != nil {
+			return
+		}
+
+		b.bytes = temp
+	}
 }
 
 func (b *B) Read(target []byte) (n int, err error) {
