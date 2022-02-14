@@ -162,7 +162,7 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 		n += int64(r)
 		i += r
 
-		if err != nil {
+		if err != nil || i < c {
 			if errors.Is(err, io.EOF) {
 				err = nil
 			}
