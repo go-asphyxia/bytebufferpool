@@ -1,6 +1,7 @@
 package bytebufferpool
 
 import (
+	"errors"
 	"io"
 	"unicode/utf8"
 
@@ -8,13 +9,26 @@ import (
 )
 
 type (
+	C struct {
+		Len int
+		Cap int
+	}
+
 	B struct {
 		bytes  []byte
 		offset int
 	}
 )
 
-func Buffer(l, c int) (b *B) {
+func Buffer(configuration *C) (b *B) {
+	l := 0
+	c := 0
+
+	if configuration != nil {
+		l = configuration.Len
+		c = configuration.Cap
+	}
+
 	b = &B{
 		bytes: make([]byte, l, c),
 	}
@@ -134,37 +148,33 @@ func (b *B) WriteString(source string) (n int, err error) {
 }
 
 func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
-	var (
-		l int
-		c int
-		r int
-	)
+	i := len(b.bytes)
+	r := 0
 
-f:
+	if i == 0 {
+		b.bytes = make([]byte, 64)
+	}
+
+	c := cap(b.bytes)
+
 	for {
-		l = len(b.bytes)
-		c = cap(b.bytes)
+		r, err = source.Read(b.bytes[i:c])
+		n += int64(r)
+		i += r
 
-		if l < c {
-			r, err = source.Read(b.bytes[l:])
-			n += int64(r)
-			if err != nil {
-				return
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = nil
 			}
 
-			continue f
-		}
-
-		size := c * 2
-
-		temp := make([]byte, size, size)
-		copy(temp, b.bytes)
-
-		r, err = source.Read(temp[l:])
-		n += int64(r)
-		if err != nil {
+			b.bytes = b.bytes[:n]
 			return
 		}
+
+		c = (c + 2) * 2
+
+		temp := make([]byte, c)
+		copy(temp, b.bytes)
 
 		b.bytes = temp
 	}
