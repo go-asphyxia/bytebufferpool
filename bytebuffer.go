@@ -151,11 +151,11 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 	i := len(b.bytes)
 	r := 0
 
-	if i == 0 {
+	c := cap(b.bytes)
+
+	if c == 0 {
 		b.bytes = make([]byte, 64)
 	}
-
-	c := cap(b.bytes)
 
 	for {
 		r, err = source.Read(b.bytes[i:c])
