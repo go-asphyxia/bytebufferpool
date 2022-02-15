@@ -149,13 +149,18 @@ func (b *B) WriteString(source string) (n int, err error) {
 
 func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 	i := len(b.bytes)
-	r := 0
-
 	c := cap(b.bytes)
 
-	if c == 0 {
-		b.bytes = make([]byte, 64)
+	if c == 0 || i == c {
+		c = (c + 2) * 2
+
+		temp := make([]byte, c)
+		copy(temp, b.bytes)
+
+		b.bytes = temp
 	}
+
+	r := 0
 
 	for {
 		r, err = source.Read(b.bytes[i:c])
@@ -167,7 +172,7 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 				err = nil
 			}
 
-			b.bytes = b.bytes[:n]
+			b.bytes = b.bytes[:i]
 			return
 		}
 
