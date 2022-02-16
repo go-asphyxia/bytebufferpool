@@ -2,6 +2,7 @@ package bytebufferpool
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"unicode/utf8"
 
@@ -9,35 +10,22 @@ import (
 )
 
 type (
-	C struct {
-		Len int
-		Cap int
-	}
-
-	B struct {
+	ByteBuffer struct {
 		bytes  []byte
 		offset int
 	}
 )
 
-func Buffer(configuration *C) (b *B) {
-	l := 0
-	c := 0
-
-	if configuration != nil {
-		l = configuration.Len
-		c = configuration.Cap
-	}
-
-	b = &B{
+func NewBuffer(l, c int) (b *ByteBuffer) {
+	b = &ByteBuffer{
 		bytes: make([]byte, l, c),
 	}
 
 	return
 }
 
-func (b *B) Copy() (target *B) {
-	target = &B{
+func (b *ByteBuffer) Copy() (target *ByteBuffer) {
+	target = &ByteBuffer{
 		bytes: make([]byte, len(b.bytes), cap(b.bytes)),
 	}
 
@@ -45,17 +33,17 @@ func (b *B) Copy() (target *B) {
 	return
 }
 
-func (b *B) Len() (l int) {
+func (b *ByteBuffer) Len() (l int) {
 	l = len(b.bytes)
 	return
 }
 
-func (b *B) Cap() (c int) {
+func (b *ByteBuffer) Cap() (c int) {
 	c = cap(b.bytes)
 	return
 }
 
-func (b *B) Grow(n int) {
+func (b *ByteBuffer) Grow(n int) {
 	s := len(b.bytes) + n
 
 	if s <= cap(b.bytes) {
@@ -70,57 +58,57 @@ func (b *B) Grow(n int) {
 	return
 }
 
-func (b *B) Reset() {
+func (b *ByteBuffer) Reset() {
 	b.bytes = b.bytes[:0]
 	b.offset = 0
 }
 
-func (b *B) Close() (err error) {
+func (b *ByteBuffer) Close() (err error) {
 	b.bytes = nil
 	return
 }
 
-func (b *B) Bytes() (target []byte) {
+func (b *ByteBuffer) Bytes() (target []byte) {
 	target = b.bytes
 	return
 }
 
-func (b *B) String() (target string) {
+func (b *ByteBuffer) String() (target string) {
 	target = conversion.BytesToStringNoCopy(b.bytes)
 	return
 }
 
-func (b *B) CopyBytes() (target []byte) {
+func (b *ByteBuffer) CopyBytes() (target []byte) {
 	target = make([]byte, len(b.bytes), cap(b.bytes))
 	copy(target, b.bytes)
 	return
 }
 
-func (b *B) CopyString() (target string) {
+func (b *ByteBuffer) CopyString() (target string) {
 	target = string(b.bytes)
 	return
 }
 
-func (b *B) Set(source []byte) {
+func (b *ByteBuffer) Set(source []byte) {
 	b.bytes = append(b.bytes[:0], source...)
 }
 
-func (b *B) SetString(source string) {
+func (b *ByteBuffer) SetString(source string) {
 	b.bytes = append(b.bytes[:0], source...)
 }
 
-func (b *B) Write(source []byte) (n int, err error) {
+func (b *ByteBuffer) Write(source []byte) (n int, err error) {
 	b.bytes = append(b.bytes, source...)
 	n = len(source)
 	return
 }
 
-func (b *B) WriteByte(source byte) (err error) {
+func (b *ByteBuffer) WriteByte(source byte) (err error) {
 	b.bytes = append(b.bytes, source)
 	return
 }
 
-func (b *B) WriteRune(source rune) (n int, err error) {
+func (b *ByteBuffer) WriteRune(source rune) (n int, err error) {
 	l := len(b.bytes)
 
 	s := l + utf8.UTFMax
@@ -141,13 +129,13 @@ func (b *B) WriteRune(source rune) (n int, err error) {
 	return
 }
 
-func (b *B) WriteString(source string) (n int, err error) {
+func (b *ByteBuffer) WriteString(source string) (n int, err error) {
 	b.bytes = append(b.bytes, source...)
 	n = len(source)
 	return
 }
 
-func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
+func (b *ByteBuffer) ReadFrom(source io.Reader) (n int64, err error) {
 	i := len(b.bytes)
 	c := cap(b.bytes)
 
@@ -164,8 +152,13 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 
 	for {
 		r, err = source.Read(b.bytes[i:c])
+
+		fmt.Println(b.bytes[:c])
+
 		n += int64(r)
 		i += r
+
+		fmt.Println(n, i)
 
 		if err != nil || i < c {
 			if errors.Is(err, io.EOF) {
@@ -185,7 +178,7 @@ func (b *B) ReadFrom(source io.Reader) (n int64, err error) {
 	}
 }
 
-func (b *B) Read(target []byte) (n int, err error) {
+func (b *ByteBuffer) Read(target []byte) (n int, err error) {
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
 		return
@@ -196,7 +189,7 @@ func (b *B) Read(target []byte) (n int, err error) {
 	return
 }
 
-func (b *B) ReadByte() (target byte, err error) {
+func (b *ByteBuffer) ReadByte() (target byte, err error) {
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
 		return
@@ -207,7 +200,7 @@ func (b *B) ReadByte() (target byte, err error) {
 	return
 }
 
-func (b *B) ReadRune() (target rune, n int, err error) {
+func (b *ByteBuffer) ReadRune() (target rune, n int, err error) {
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
 		return
@@ -218,7 +211,7 @@ func (b *B) ReadRune() (target rune, n int, err error) {
 	return
 }
 
-func (b *B) ReadString(target string) (n int, err error) {
+func (b *ByteBuffer) ReadString(target string) (n int, err error) {
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
 		return
@@ -229,7 +222,7 @@ func (b *B) ReadString(target string) (n int, err error) {
 	return
 }
 
-func (b *B) WriteTo(target io.Writer) (n int64, err error) {
+func (b *ByteBuffer) WriteTo(target io.Writer) (n int64, err error) {
 	if len(b.bytes) <= b.offset {
 		err = io.EOF
 		return
