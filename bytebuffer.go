@@ -14,7 +14,7 @@ type (
 	}
 )
 
-func NewBuffer(l, c int) (b *ByteBuffer) {
+func NewByteBuffer(l, c int) (b *ByteBuffer) {
 	b = &ByteBuffer{
 		bytes: make([]byte, l, c),
 	}
