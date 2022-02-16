@@ -1,8 +1,6 @@
 package bytebufferpool
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"unicode/utf8"
 
@@ -139,42 +137,32 @@ func (b *ByteBuffer) ReadFrom(source io.Reader) (n int64, err error) {
 	i := len(b.bytes)
 	c := cap(b.bytes)
 
-	if c == 0 || i == c {
-		c = (c + 2) * 2
-
-		temp := make([]byte, c)
-		copy(temp, b.bytes)
-
-		b.bytes = temp
-	}
-
 	r := 0
 
 	for {
-		r, err = source.Read(b.bytes[i:c])
+		if i == c {
+			c = (c + 2) * 2
 
-		fmt.Println(b.bytes[:c])
+			temp := make([]byte, c)
+			copy(temp, b.bytes)
+
+			b.bytes = temp
+		}
+
+		r, err = source.Read(b.bytes[i:c])
 
 		n += int64(r)
 		i += r
 
-		fmt.Println(n, i)
+		b.bytes = b.bytes[:i]
 
 		if err != nil || i < c {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				err = nil
 			}
 
-			b.bytes = b.bytes[:i]
 			return
 		}
-
-		c = (c + 2) * 2
-
-		temp := make([]byte, c)
-		copy(temp, b.bytes)
-
-		b.bytes = temp
 	}
 }
 
