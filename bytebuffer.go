@@ -141,7 +141,7 @@ func (b *ByteBuffer) ReadFrom(source io.Reader) (n int64, err error) {
 
 	for {
 		if i == c {
-			c = (c + 2) * 2
+			c = (c + 16) * 2
 
 			temp := make([]byte, c)
 			copy(temp, b.bytes)
