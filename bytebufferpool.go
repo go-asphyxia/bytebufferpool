@@ -4,6 +4,8 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+
+	abytebuffer "github.com/go-asphyxia/bytebuffer"
 )
 
 type (
@@ -48,31 +50,31 @@ func NewPool() (p *Pool) {
 	return
 }
 
-func Get() (b *ByteBuffer) {
+func Get() (b *abytebuffer.ByteBuffer) {
 	b = defaultPool.Get()
 	return
 }
 
-func (p *Pool) Get() (b *ByteBuffer) {
+func (p *Pool) Get() (b *abytebuffer.ByteBuffer) {
 	o := p.pool.Get()
 
 	if o != nil {
-		b = o.(*ByteBuffer)
+		b = o.(*abytebuffer.ByteBuffer)
 		return
 	}
 
-	b = &ByteBuffer{
+	b = &abytebuffer.ByteBuffer{
 		Bytes: make([]byte, 0, atomic.LoadUint64(&p.defaultSize)),
 	}
 
 	return
 }
 
-func Put(b *ByteBuffer) {
+func Put(b *abytebuffer.ByteBuffer) {
 	defaultPool.Put(b)
 }
 
-func (p *Pool) Put(b *ByteBuffer) {
+func (p *Pool) Put(b *abytebuffer.ByteBuffer) {
 	l := len(b.Bytes)
 	i := index(l)
 

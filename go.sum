@@ -1,2 +1,4 @@
-github.com/go-asphyxia/conversion v0.0.0-20220124171918-8ea410b97d4f h1:YGeHG4ez0oNX311sO2ENL9DHIrYYMmEcwhm8ZLsaq20=
-github.com/go-asphyxia/conversion v0.0.0-20220124171918-8ea410b97d4f/go.mod h1:RdOMIMWaZ5U4wfSSC3I2Y2kKdioixU8wp/7Ul8hKGN0=
+github.com/go-asphyxia/bytebuffer v1.0.0 h1:fMy8OZWRx6mzbCMQNA1YsG+AbffE7wDFgAmnpKzvOOo=
+github.com/go-asphyxia/bytebuffer v1.0.0/go.mod h1:5I0oWhTvg4/f+gwyq0Tw1KefDXlppthqqjPw6CrqRjI=
+github.com/go-asphyxia/conversion v0.0.1 h1:z2hvlZENFwri0jMUkBWEf8X6pJQebLy8D4vYBHQCdKw=
+github.com/go-asphyxia/conversion v0.0.1/go.mod h1:DArVyQZpKRxPfTyjzJRSkMLsQIIXqP1HB5WVlGOIwT4=
